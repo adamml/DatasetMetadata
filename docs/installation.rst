@@ -27,4 +27,5 @@ From GitHub
    
    git clone git://github.com/adamml/DatasetMD.git
    cd DatasetMD
-   python setup.py install
+   python -m build
+   python -m install
