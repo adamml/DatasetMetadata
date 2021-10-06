@@ -12,8 +12,8 @@ datasetmd
     :undoc-members:
     :show-inheritance:
 	
-datasetmd.isotemplate
----------------------
+datasetmd.templates.iso19139
+----------------------------
 
 .. automodule:: datasetmd.isotemplate
     :members:

@@ -1,4 +1,4 @@
-import datetime, jinja2
+import datetime, jinja2, datasetmd.templates.iso19139
 
 class DatasetMD:
     """This class is the base class for encapsulating scientific / 
@@ -46,7 +46,8 @@ class DatasetMD:
         :return: A string of text formatted to ISO 19139 XML
         :rtype: str
         """
-        return print(jinja2.Template(ISO19139Template().template()).render(md=self))
+        
+        return print(jinja2.Template(datasetmd.templates.iso19139.template()).render(md=self))
     
     def toDataCiteXML(self):
         """Outputs a DatasetMD object as DataCite MetaData Store compliant 

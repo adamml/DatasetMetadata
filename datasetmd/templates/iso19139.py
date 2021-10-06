@@ -1,9 +1,9 @@
-class ISO19139Template:
+def template():
     """
     This class provides a  Jinja2 template for creating an ISO19139 XML record
     from a DatasetMD object
     """
-    __template = """<gmd:MD_Metadata
+    return """<gmd:MD_Metadata
         xmlns:gco="http://www.isotc211.org/2005/gco"
         xmlns:gmd="http://www.isotc211.org/2005/gmd"
         xmlns:gml="http://www.opengis.net/gml/3.2"
@@ -156,7 +156,7 @@ class ISO19139Template:
                     <!-- TODO: doi suggested citation text to go here -->
                     
                     <!-- Dataset owning organisation(s) -->
-                    {%- for org in md.dataset_organisations %}
+                    {%- for org in md.owning_organisations %}
                     
                     <gmd:pointOfContact>
                         <gmd:CI_ResponsibleParty>
@@ -234,9 +234,3 @@ class ISO19139Template:
     </gmd:identificationInfo>
   
 </gmd:MD_Metadata>"""
-    
-    def __init__(self):
-        pass
-    
-    def template(self):
-        return self.__template
