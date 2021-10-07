@@ -153,7 +153,12 @@ def template():
                     </gmd:identifier>
                     {% endif %}
                     
-                    <!-- TODO: doi suggested citation text to go here -->
+                    {%- if citation_string is not none %}
+                    <!-- doi suggested citation text -->
+                    <gmd:otherCitationDetails>
+                        <gco:CharacterString>{{ citation_string }}<gco:CharacterString>
+                    </gmd:otherCitationDetails>
+                    {% endif %}
                     
                     <!-- Dataset owning organisation(s) -->
                     {%- for org in md.owning_organisations %}
