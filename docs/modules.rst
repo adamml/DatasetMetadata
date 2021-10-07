@@ -2,7 +2,16 @@ API Documentation
 =================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 3
+
+.. graphviz::
+
+   digraph foo {
+      "datasetmd.DatasetMD" -> "datasetmd.Citation";
+	  "datasetmd.DatasetMD" -> "datasetmd.Feature";
+	  "datasetmd.DatasetMD" -> "datasetmd.Organisation";
+	  "datasetmd.Organisation" -> "datasetmd.WebAddress";
+   }
 
 datasetmd
 ---------
@@ -15,7 +24,7 @@ datasetmd
 datasetmd.templates.iso19139
 ----------------------------
 
-.. automodule:: datasetmd.isotemplate
+.. automodule:: datasetmd.templates.iso19139
     :members:
     :undoc-members:
     :show-inheritance:

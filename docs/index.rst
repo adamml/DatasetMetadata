@@ -7,6 +7,8 @@ DatasetMD documentation
 =======================
 
 :Author: Adam Leadbetter
+:Release:
+:Date: |today|
 
 Introduction
 ============
@@ -15,7 +17,11 @@ Introduction
    :maxdepth: 3
    :caption: Contents:
 
+   features
    installation
+   getting_started
+   contributing
+   roadmap
    modules
 
 Indices and tables

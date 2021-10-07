@@ -47,7 +47,7 @@ class DatasetMD:
         :rtype: str
         """
         
-        return print(jinja2.Template(datasetmd.templates.iso19139.template()).render(md=self))
+        return jinja2.Template(datasetmd.templates.iso19139.template()).render(md=self)
     
     def toDataCiteXML(self):
         """Outputs a DatasetMD object as DataCite MetaData Store compliant 
