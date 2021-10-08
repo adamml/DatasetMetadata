@@ -1,4 +1,4 @@
-import datetime, jinja2, datasetmd.templates.iso19139
+import datetime, datasetmd.templates, jinja2
 
 class DatasetMD:
     """This class is the base class for encapsulating scientific / 
@@ -10,47 +10,77 @@ class DatasetMD:
     :type citation: Citation
     :param feature: 
     :type feature: Feature, defaults to None
+    :param observed_properties:
+    :type observed_properties: list of :py:class:`datasetmd.ObservedProperty`
+                                    objects, defaults to None
     :param owning_organisations:
-    :type owning_organisations: list of Organisation objects, defaults to None
+    :type owning_organisations: list of :py:class:`datasetmd.Organisation` 
+                                    objects, defaults to None
     :param publisher:
     :type publisher: Organisation, defaults to None
     """
     def __init__(self,
-                    base=None,
-                    citation=None,
-                    feature=None,
-                    owning_organisations=None,
-                    publisher=None):
-        """Constructor method"""
+                            base=None,
+                            citation=None,
+                            feature=None,
+                            observed_properties=None,
+                            owning_organisations=None,
+                            publisher=None):
         self.base = base
         self.citation = citation
         self.feature = feature
         self.publisher = publisher
+        self.observed_properties = observed_properties
         
     def __str__(self):
         return """
     base: {0}
     citation: {1}
     feature: {2}
-    owning:organisations: {3}
-    publisher: {4}
+    observed_properties: {3}
+    owning_organisations: {4}
+    publisher: {5}
 """.format(str(self.base),
                 str(self.citation),
                 str(self.feature),
+                str(self.observed_properties),
                 str(self.owning_organisations),
                 str(self.publisher))
         
     def toISO19139(self):
-        """Outputs a DatasetMD object as ISO 19139 compliant XML
+        """Outputs a :py:class:`datasetmd.DatasetMD` object as ISO 19139 
+        compliant XML
         
         :return: A string of text formatted to ISO 19139 XML
         :rtype: str
         """
         
-        return jinja2.Template(datasetmd.templates.iso19139.template()).render(md=self, citation_string=self.cite('string'))
+        keyword_groups = []
+        keywords = []
+        
+        if self.observed_properties is not None:
+            for op in self.observed_properties:
+                if op.in_defined_term_set is not None:
+                    this_group = {'name': op.in_defined_term_set.title,
+                                    'url': op.in_defined_term_set.url}
+                    this_term = {'name': op.title,'url': op.url}
+                    if this_group not in keyword_groups:
+                        keyword_groups.append(this_group)
+                        keywords.append({'name': op.in_defined_term_set.title,
+                                    'url': op.in_defined_term_set.url,
+                                    'keywords':[{'name': op.title,'url': op.url
+                                }]})
+                    elif this_term not in keywords[keyword_groups.index(this_group)]['keywords']:
+                        keywords[keyword_groups.index(this_group)]['keywords'].append(this_term)
+        
+        if not keywords:
+            keywords = None
+        
+        return jinja2.Template(datasetmd.templates.iso19139.template()).render(md=self, 
+                        citation_string=self.cite('string'))
     
     def toDataCiteXML(self):
-        """Outputs a DatasetMD object as DataCite MetaData Store compliant 
+        """Outputs a :py:class:`datasetmd.DatasetMD` object as DataCite MetaData Store compliant 
         XML
         
         :return: A string of text formatted to DataCite XML schema
@@ -58,106 +88,22 @@ class DatasetMD:
         """
         pass
         
-    def cite(self, type):
-        """Creates a citation string for the DatasetMD object, or formats a
-        citation to a well-known reference manager format.
+    def cite(self, citationtype):
+        """Creates a citation string for the :py:class:`datasetmd.DatasetMD` 
+        object, or formats a citation to a well-known reference manager 
+        ormat.
         
-        :param type: The value of type should be one of `string`
-        :type type: str
+        :param citationtype: The value of type should be one of 
+                                * `string`
+        :type citationtype: str
         
         :return: A string for the citation type requested
         :rtype: str, or None is `type` is not supported
         """
-        ret_string = ""
-        author_count = 0
-        affiliation_list = []
-        if type.lower() == 'string':
-            if self.citation is not None:
-                if self.citation.authors is not None:
-                    for author in self.citation.authors:
-                        if author_count > 0:
-                            ret_string += '; '
-                        if isinstance(author, Person):
-                            if author.family_name is None:
-                                ret_string += '{}'.format(author.given_name)
-                                author_count += 1
-                            elif author.given_name is None:
-                                ret_string += '{}'.format(author.family_name)
-                                author_count += 1
-                            else:
-                                ret_string += '{0}, {1}'.format(author.family_name, author.given_name)
-                                author_count += 1
-                            if author.affiliation is not None:
-                                affiliation_count = 0
-                                for affiliation in author.affiliation:
-                                    if affiliation.name is not None:
-                                        if affiliation.country is not None:
-                                            citation_affiliation = '{0}, {1}'.format(affiliation.name, affiliation.country)
-                                        else:
-                                            citation_affiliation = '{}'.format(affiliation.name)
-                                        if citation_affiliation not in affiliation_list:
-                                            affiliation_list.append(citation_affiliation)
-                                        try:
-                                            if affiliation_count > 0:
-                                                ret_string += ','
-                                            ret_string += ' ({})'.format(affiliation_list.index(citation_affiliation) + 1)
-                                            affiliation_count += 1
-                                        except ValueError:
-                                            pass
-                        elif isinstance(author, Organisation):
-                            if author.name is not None:
-                                ret_string += '{}'.format(author.name)
-                                if author.country is not None:
-                                    citation_affiliation = '{0}, {1}'.format(author.name, author.country)
-                                else:
-                                    citation_affiliation = '{}'.format(author.name)
-                                if citation_affiliation not in affiliation_list:
-                                    affiliation_list.append(citation_affiliation)
-                                try:
-                                    ret_string += ' ({})'.format(affiliation_list.index(citation_affiliation) + 1)
-                                except ValueError:
-                                    pass
-                                author_count += 1
-                if ret_string:
-                    ret_string = '{}. '.format(ret_string)
-                if self.citation.doi_publication_date is not None:
-                    ret_string += '({})'.format(self.citation.doi_publication_date.year)
-                if ret_string:
-                    ret_string = '{}. '.format(ret_string)
-                if self.base.title is not None:
-                    ret_string += '{}'.format(self.base.title)
-                if ret_string:
-                    ret_string = '{}. '.format(ret_string)
-                if self.citation.doi_publisher is not None:
-                    if self.citation.doi_publisher.name is not None:
-                        if self.citation.doi_publisher.country is not None:
-                            ret_string += '{}, {}'.format(self.citation.doi_publisher.name, self.citation.doi_publisher.country)
-                        else:
-                            ret_string += '{}'.format(self.citation.doi_publisher.name)
-                if ret_string:
-                    ret_string = '{}. '.format(ret_string)
-                if self.citation.prefer_short_doi:
-                    if self.citation.short_doi is not None:
-                        ret_string += 'doi: {}'.format(self.citation.short_doi)
-                    elif self.citation.doi is not None:
-                        ret_string += 'doi: {}'.format(self.citation.doi)
-                else:
-                    if self.citation.doi is not None:
-                        ret_string += 'doi: {}'.format(self.citation.doi)
-                    elif self.citation.short_doi is not None:
-                        ret_string += 'doi: {}'.format(self.citation.short_doi)
-                if ret_string:
-                    ret_string = '{}. '.format(ret_string)
-                if affiliation_list:
-                    affiliation_count = 1
-                    for affiliation in affiliation_list:
-                        ret_string += '({0}) {1}. '.format(affiliation_count, affiliation)
-                        affiliation_count += 1
-        ret_string = ret_string.strip()
-        if not ret_string:
-            ret_string = None
-        return ret_string
-        
+        return_value = None
+        if citationtype.lower() == 'string':
+            return_value = datasetmd.templates.citationstring.template(self)
+        return return_value
 
 class Base:
     """This class adds basic metadata to a DatasetMD object
@@ -296,20 +242,31 @@ class Organisation:
                         str(self.website))
         
 class WebAddress:
-    def __init__(self, url=None):
+    """ This class describes an HTTP, FTP or other such web address
+     
+    :param title:
+    :type title: str
+    :param url:
+    :param url: str
+    """
+    def __init__(self, title=None, url=None):
         self.url = url
+        self.title = title
     
     def __str__(self):
         return """
-            url: {}
-        """.format(self.url)
+            title: {0}
+            url: {1}
+        """.format(self.title, self.url)
 
 class Citation:
     """This class describes any formal citation identifier associated with a
-    DatasetMD object
+    :py:class:`datasetmd.DatasetMD` object
     
     :param authors: A list of authors for the dataset
-    :type authors: list of Person or Organisation objects, defaults to None
+    :type authors: list of :py:class:`datasetmd.Person` or 
+                        :py:class:`datasetmd.Organisation` objects, defaults 
+                        to None
     :param doi:
     :type doi: str, defaults to None
     :param doi_publication_date:
@@ -355,7 +312,8 @@ class Person:
     DatasetMD object
     
     :param affiliation:
-    :tyoe affiliation: list of Organisation objects, defaults to None
+    :type affiliation: list of :py:class:`datasetmd.Organisation` objects, 
+                        defaults to None
     :param family_name:
     :type family_name: str, defaults to None
     :param given_name: 
@@ -381,4 +339,61 @@ class Person:
                     self.family_name,
                     self.given_name,
                     self.role)
+
+class DefinedTerm(WebAddress):
+    """This class describes a term defined in a controlled vocabulary,
+    taxonomy or as an individual in an ontology.
+    
+    :param in_defined_term_set:
+    :type in_defined_term_set: WebAddress, defaults to None
+    :param term_code:
+    :type term_code: str, defaults to None
+    :param title:
+    :type title: str, defaults to None
+    :param url:
+    :param url: str, defaults to None
+    """
+    def __init__(self, in_defined_term_set=None, term_code=None,
+                                        title=None, url=None):
+        super().__init__(title=title, url=url)
+        self.in_defined_term_set = in_defined_term_set
+        self.term_code = term_code
+        
+    def __str__(self):
+        return """
+                in_defined_term_set: {0}
+                term_code: {1}
+                title: {2}
+                url: {3}
+        """.format(str(self.in_defined_term_set),
+                    self.term_code,
+                    self.title,
+                    self.url)
                     
+class ObservedProperty(DefinedTerm):
+    """This class describes properties that have been observed or modelled
+    and recorded within the dataset described by a 
+    :py:class`datasetmd.DatasetMD` instance
+    
+    :param in_defined_term_set:
+    :type in_defined_term_set: WebAddress, defaults to None
+    :param title:
+    :type title: str, defaults to None
+    :param url:
+    :param url: str,defaults to None
+    """
+    def __init__(self, in_defined_term_set=None, term_code=None, 
+                                                        title=None, url=None):
+        super().__init__(in_defined_term_set=in_defined_term_set, 
+                                title=title, url=url, term_code=term_code)
+        
+    def __str__(self):
+        return """
+                in_defined_term_set: {0}
+                term_code: {1}
+                title: {2}
+                url: {3}
+        """.format(str(self.in_defined_term_set),
+                    self.term_code,
+                    self.title,
+                    self.url)
