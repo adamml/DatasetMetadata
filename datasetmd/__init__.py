@@ -1,4 +1,19 @@
+"""
+.. data:: FAMILY_THEN_GIVEN
+
+      Used on :py:class:`datasetmd.Person` to indicate the full name should
+      be rendered in the order `family_name` followed by `given_name`
+      
+.. data:: GIVEN_THEN_FAMILY
+
+      Used on :py:class:`datasetmd.Person` to indicate the full name should
+      be rendered in the order `given_name` followed by `family_name`
+"""
+
 import datetime, datasetmd.templates, jinja2
+
+FAMILY_THEN_GIVEN = 'ftg'
+GIVEN_THEN_FAMILY = 'gtf'
 
 class DatasetMD:
     """This class is the base class for encapsulating scientific / 
@@ -8,8 +23,17 @@ class DatasetMD:
     :type base: Base, defaults to None
     :param citation:
     :type citation: Citation
+    :param cross_references:
+    :type cross_references: list of :py:class:`datasetmd.CrossReference`
+                                    objects, defaults to None
     :param feature: 
     :type feature: Feature, defaults to None
+    :param included_in_data_catalogue:
+    :type included_in_data_catalogue: WebAddress, defaults to None
+    :param keywords:
+    :type list of DefinedTerm objects, defaults to None:
+    :param limitations:
+    :type limitations: Limitations, defaults to None
     :param observed_properties:
     :type observed_properties: list of :py:class:`datasetmd.ObservedProperty`
                                     objects, defaults to None
@@ -22,15 +46,23 @@ class DatasetMD:
     def __init__(self,
                             base=None,
                             citation=None,
+                            cross_references=None,
                             feature=None,
+                            included_in_data_catalogue=None,
+                            keywords=None,
+                            limitations=None,
                             observed_properties=None,
                             owning_organisations=None,
                             publisher=None):
         self.base = base
         self.citation = citation
         self.feature = feature
+        self.limitations = limitations
+        self.cross_references = cross_references
         self.publisher = publisher
         self.observed_properties = observed_properties
+        self.keywords = keywords
+        self.included_in_data_catalogue = included_in_data_catalogue
         
     def __str__(self):
         return """
@@ -70,6 +102,21 @@ class DatasetMD:
                                     'url': op.in_defined_term_set.url,
                                     'keywords':[{'name': op.title,'url': op.url
                                 }]})
+                    elif this_group not in keywords[keyword_groups.index(this_group)]['keywords']:
+                        keywords[keyword_groups.index(this_group)]['keywords'].append(this_term)
+        
+        if self.keywords is not None:
+            for kw in self.keywords:
+                if kw.in_defined_term_set is not None:
+                    this_group = {'name': kw.in_defined_term_set.title,
+                                    'url': kw.in_defined_term_set.url}
+                    this_term = {'name': kw.title,'url': kw.url}
+                    if this_group not in keyword_groups:
+                        keyword_groups.append(this_group)
+                        keywords.append({'name': kw.in_defined_term_set.title,
+                                    'url': kw.in_defined_term_set.url,
+                                    'keywords':[{'name': kw.title,'url': op.url
+                                }]})
                     elif this_term not in keywords[keyword_groups.index(this_group)]['keywords']:
                         keywords[keyword_groups.index(this_group)]['keywords'].append(this_term)
         
@@ -77,7 +124,7 @@ class DatasetMD:
             keywords = None
         
         return jinja2.Template(datasetmd.templates.iso19139.template()).render(md=self, 
-                        citation_string=self.cite('string'))
+                        citation_string=self.cite('string'), keywords=keywords)
     
     def toDataCiteXML(self):
         """Outputs a :py:class:`datasetmd.DatasetMD` object as DataCite MetaData Store compliant 
@@ -87,6 +134,11 @@ class DatasetMD:
         :rtype: str
         """
         pass
+        
+    def toSchemaDotOrg(self):
+        authors = datasetmd.templates.schemadotorg_creatorlist.template(self)
+        return jinja2.Template(datasetmd.templates.schemadotorg.template()).render(md=self,
+                    citation_string=self.cite('string'),authors=authors)
         
     def cite(self, citationtype):
         """Creates a citation string for the :py:class:`datasetmd.DatasetMD` 
@@ -318,16 +370,24 @@ class Person:
     :type family_name: str, defaults to None
     :param given_name: 
     :type given_name: str, defaults to None
+    :param name_order:
+    :type name_order: str, use the value of :py:data:`datasetmd.FAMILY_THEN_GIVEN` or :py:data:`datasetmd.GIVEN_THEN_FAMILY`,
+            defaults to GIVEN_THEN_FAMILY
+    :param role:
+    :type role:
     """
+    
     def __init__(self,
                     affiliation=None,
                     family_name=None,
                     given_name=None,
+                    name_order=GIVEN_THEN_FAMILY,
                     role=None):
         self.affiliation = affiliation
         self.family_name = family_name
         self.given_name = given_name
         self.role = role
+        self.name_order = name_order
     
     def __str__(self):
         return """
@@ -345,7 +405,9 @@ class DefinedTerm(WebAddress):
     taxonomy or as an individual in an ontology.
     
     :param in_defined_term_set:
-    :type in_defined_term_set: WebAddress, defaults to None
+    :type in_defined_term_set: DefinedTermSet, defaults to None
+    :param publication_date:
+    :type publication_date: `datetime.datetime.Date`
     :param term_code:
     :type term_code: str, defaults to None
     :param title:
@@ -353,11 +415,14 @@ class DefinedTerm(WebAddress):
     :param url:
     :param url: str, defaults to None
     """
-    def __init__(self, in_defined_term_set=None, term_code=None,
+    def __init__(self, in_defined_term_set=None, 
+                                        publication_date=None, 
+                                        term_code=None,
                                         title=None, url=None):
         super().__init__(title=title, url=url)
         self.in_defined_term_set = in_defined_term_set
         self.term_code = term_code
+        self.publication_date = publication_date
         
     def __str__(self):
         return """
@@ -369,6 +434,13 @@ class DefinedTerm(WebAddress):
                     self.term_code,
                     self.title,
                     self.url)
+
+class DefinedTermSet(WebAddress):
+    def __init__(self, publication_date=None, 
+                                        term_code=None,
+                                        title=None, url=None):
+        super().__init__(title=title, url=url)
+        self.publication_date = publication_date
                     
 class ObservedProperty(DefinedTerm):
     """This class describes properties that have been observed or modelled
@@ -376,16 +448,24 @@ class ObservedProperty(DefinedTerm):
     :py:class`datasetmd.DatasetMD` instance
     
     :param in_defined_term_set:
-    :type in_defined_term_set: WebAddress, defaults to None
+    :type in_defined_term_set: DefinedTermSet, defaults to None
+    :param publication_date:
+    :type publication_date: `datetime.datetime.Date`
+    :param term_code:
+    :type term_code: str, defaults to None
     :param title:
     :type title: str, defaults to None
     :param url:
     :param url: str,defaults to None
     """
-    def __init__(self, in_defined_term_set=None, term_code=None, 
-                                                        title=None, url=None):
+    def __init__(self, in_defined_term_set=None, 
+                            publication_date=None,
+                            term_code=None, 
+                            title=None, 
+                            url=None):
         super().__init__(in_defined_term_set=in_defined_term_set, 
-                                title=title, url=url, term_code=term_code)
+                                publication_date=publication_date,
+                                title=title, url=url, term_code=term_code,)
         
     def __str__(self):
         return """
@@ -397,3 +477,58 @@ class ObservedProperty(DefinedTerm):
                     self.term_code,
                     self.title,
                     self.url)
+
+class License:
+    """This class describes the license associated with an instance of the
+    :py:class:`datasetmd.DatasetMD` class. The license describes how a
+    dataset may be distributed and reused. The class definition is informed
+    by the Schema.org CreativeWork pattern, and the recommendations of the 
+    Earth Science Informatics Partnership's Science on Schema working group.
+    
+    :param description:
+    :type description: str, defaults to None
+    :param in_defined_term_set:
+    :type in_defined_term_set: DefinedTermSet, defaults to None
+    :param name:
+    :type name: str, defaults to None
+    :param spdx_url:
+    :type spdx_url: WebAddress, defaults to None
+    :param url: 
+    :type url: WebAddress, defaults to None
+    """
+    def __init__(self, description=None,
+                        in_defined_term_set=None,
+                        name=None,
+                        spdx_url=None,
+                        url=None):
+        self.description = description
+        self.in_defined_term_set = in_defined_term_set
+        self.name = name
+        self.spdx_url = spdx_url
+        self.url = url
+        
+class Limitations:
+    """
+    
+    :param use_limitations:
+    :type use_limitations: list of str, defaults to None
+    """
+    def __init__(self, use_limitations=None):
+        self.use_limitations = use_limitations
+        
+class CrossReference(WebAddress):
+    def __init__(self):
+        """This class defines cross-references to other datasets
+        and relevant metadata objects
+    
+        :param cross_reference_type:
+        :type cross_reference_type: DefinedTerm, defaults to None
+        :param title:
+        :type title: str, defaults to None
+        :param url:
+        :param url: str, defaults to None
+    """
+    def __init__(self, cross_reference_type=None, 
+                                        title=None, url=None):
+        super().__init__(title=title, url=url)
+        self.cross_reference_type = cross_reference_type

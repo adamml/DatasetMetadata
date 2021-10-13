@@ -2,6 +2,9 @@ def template():
     """
     This class provides a  Jinja2 template for creating an ISO19139 XML record
     from a DatasetMD object
+    
+    ..note::
+       TODO: render keywords for character type only; limitations for object types
     """
     return """<gmd:MD_Metadata
         xmlns:gco="http://www.isotc211.org/2005/gco"
@@ -91,6 +94,8 @@ def template():
     </gmd:dataSetURI>
     {% endif %}
     
+    
+    {%- if md.feature.epsg_code is not none %}
     <!-- Dataset coordinate reference system -->
     
     <gmd:referenceSystemInfo>
@@ -107,6 +112,7 @@ def template():
             </gmd:referenceSystemIdentifier>
         </gmd:MD_ReferenceSystem>
     </gmd:referenceSystemInfo>
+    {% endif %}
   
     <gmd:identificationInfo>
         <gmd:MD_IdentificationInfo>
@@ -232,7 +238,88 @@ def template():
                             </gmd:maintenanceAndUpdateFrequency>
                         </gmd:MD_MaintenanceInformation>
                     </gmd:resourceMaintenance>
-                
+                    
+                    {%- if keywords is not none %}
+                    
+                    <!-- Dataset keywords-->
+                    
+                    {%- for kwset in keywords %}
+                    <gmd:descriptiveKeywords>
+                        <gmd:MD_Keywords>
+                            {%- for kw in kwset.keywords %}
+                            <gmd:keyword>
+                                <gmx:Anchor xlink:href="{{ kw.url }}">{{ kw.name }}</gmx:Anchor>
+                            </gmd:keyword>
+                            {% endfor %}
+                            <gmd:thesaurusName>
+                                <gmd:CI_Citation>
+                                    <gmd:title>
+                                        <gmx:Anchor xlink:href="{{ kwset.url }}">{{ kwset.name }}</gmx:Anchor>
+                                    </gmd:title>
+                                    <gmd:date>
+                                        <gmd:CI_Date>
+                                            <gmd:date>
+                                                <gco:Date>2008-06-01</gco:Date>
+                                            </gmd:date>
+                                            <gmd:dateType>
+                                                <gmd:CI_DateTypeCode codeList="http://standards.iso.org/ittf/PubliclyAvailableStandards/ISO_19139_Schemas/resources/Codelist/ML_gmxCodelists.xml#CI_DateTypeCode" codeListValue="publication">publication</gmd:CI_DateTypeCode>
+                                            </gmd:dateType>
+                                        </gmd:CI_Date>
+                                    </gmd:date>
+                                </gmd:CI_Citation>
+                            </gmd:thesaurusName>
+                        </gmd:MD_Keywords>
+                    </gmd:descriptiveKeywords>
+                    
+                    {% endfor %}
+                    {% endif %}
+                    
+                    {%- if md.limitations is not none %}
+                    {%- if md.limitations.use_limitations is not none %}
+                    <gmd:resourceConstraints>
+                    {%- for ul in  md.limitations.use_limitations %}
+                    {%- if ul is not mapping %}
+                        <gmd:useLimitation>
+                            <gco:CharacterString>{{ ul }}</gco:CharacterString>
+                        </gmd:useLimitation>
+                    {% endif %}
+                    {% endfor %}
+                    </gmd:resourceConstraints>
+                    {% endif %}
+                    {% endif %}
+                    
+                    {%- if md.license is not none %}
+                    <gmd:resourceConstraints>
+                        <gmd:MD_LegalConstraints>
+                            <gmd:accessConstraints>
+                                <gmd:MD_RestrictionCode codeList="{% if md.license.in_defined_term_set is not none %}{% if md.license.in_defined_term_set.url is not none %}{{ md.license.in_defined_term_set.url }}{% endif %}{% endif %}" codeListValue="{% if md.license.name is not none %}{{ md.license.name|urlencode }}{% endif %}">{% if md.license.name is not none %}{{ md.license.name }}{% endif %}</gmd:MD_RestrictionCode>
+                            </gmd:accessConstraints>
+                        </gmd:MD_LegalConstraints>
+                    </gmd:resourceConstraints>
+                    {% endif %}
+                    
+                    {%- if md.cross_references is not none %}
+                    {% for cross_reference in md.cross_references %}
+                    <gmd:aggregationInfo>
+                        <gmd:MD_AggregateInformation id="cross_references-{{ loop.index }}">
+                            <gmd:aggregateDataSetIdentifier>
+                                <gmd:MD_Identifier>
+                                    <gmd:code>
+                                        <gco:CharacterString>{{ cross_reference.title }}</gco:CharacterString>
+                                    </gmd:code>
+                                </gmd:MD_Identifier>
+                            </gmd:aggregateDataSetIdentifier>
+                            <gmd:associationType>
+                                <gmd:DS_AssociationTypeCode codeList="http://www.isotc211.org/2005/resources/Codelist/gmxCodelists.xml#DS_AssociationTypeCode" codeListValue="crossReference">crossReference</gmd:DS_AssociationTypeCode>
+                            </gmd:associationType>
+                            <gmd:initiativeType>
+                                <gmd:DS_InitiativeTypeCode codeList="{% if cross_reference.cross_reference_type.in_defined_term_set is not none %}{% if cross_reference.cross_reference_type.in_defined_term_set.url %}{{ cross_reference.cross_reference_type.in_defined_term_set.url }}{% endif %}{% endif %}" codeListValue="{% if cross_reference.cross_reference_type is not none %}{% if cross_reference.cross_reference_type.title is not none %}{{ cross_reference.cross_reference_type.title }}{% endif %}{% endif %}">{% if cross_reference.cross_reference_type.in_defined_term_set is not none %}{% if cross_reference.cross_reference_type.title is not none %}{{ cross_reference.cross_reference_type.title }}{% endif %}{% endif %}</gmd:DS_InitiativeTypeCode>
+                            </gmd:initiativeType>
+                        </gmd:MD_AggregateInformation>
+                    </gmd:aggregationInfo>
+                    {% endfor %}
+                    {% endif %}
+                    
                 </gmd:CI_Citation>
             </gmd:citation>
         </gmd:MD_IdentificationInfo>

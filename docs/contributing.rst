@@ -17,7 +17,7 @@ Each Python file in `datasetmd/templates` must describe exactly one function,
 named `template`, for example :py:func:`datasetmd.templates.iso19139.template`. This function may:
 
 * take zero arguments and return as a `str` a Jinja2 template which can be rendered against a class defined in the :py:class:`datasetmd` module, e.g. :py:func:`datasetmd.templates.iso19139.template`.
-* or take exactly on argument, a :py:class:`datasetmd.DatasetMD` object, and return as a `str` some output based on the attributes of the object, e.g. :py:func:`datasetmd.templates.citationstring.template`.
+* or take exactly on argument, a :py:class:`datasetmd.DatasetMD` object, and return as a `str` or a mapping object some output based on the attributes of the object, e.g. :py:func:`datasetmd.templates.citationstring.template` or :py:func:`datasetmd.templates.schemadotorg_creatorlist.template`.
 
 For example, the declarations of
 

@@ -1,8 +1,3 @@
-"""
-This module provides a function to create a suggested citation string for 
-a DatasetMD object.
-"""
-
 import datasetmd
 
 def template(md=None):
