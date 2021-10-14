@@ -5,6 +5,7 @@ Output formats supported
 ------------------------
 
 * ISO19139 compliant XML
+* Schema.org JSON-LD
 
 Standards support
 -----------------
@@ -16,4 +17,6 @@ Standards support
    * - Standard
      - Version
    * - INSPIRE Metadata
+     - _foo_
+   * - ESIP Science on Schema
      - _foo_

@@ -3,8 +3,9 @@ def template():
     This class provides a  Jinja2 template for creating an ISO19139 XML record
     from a DatasetMD object
     
-    ..note::
+    .. note::
        TODO: render keywords for character type only; limitations for object types
+       
     """
     return """<gmd:MD_Metadata
         xmlns:gco="http://www.isotc211.org/2005/gco"

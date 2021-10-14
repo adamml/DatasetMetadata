@@ -1,4 +1,9 @@
 """
+.. data:: CITE_STRING
+
+      Used on :py:meth:`datasetmd.DatasetMD.cite` to indicate that the
+      response should be a citation string
+
 .. data:: FAMILY_THEN_GIVEN
 
       Used on :py:class:`datasetmd.Person` to indicate the full name should
@@ -12,8 +17,10 @@
 
 import datetime, datasetmd.templates, jinja2
 
-FAMILY_THEN_GIVEN = 'ftg'
-GIVEN_THEN_FAMILY = 'gtf'
+CITE_STRING = 'CITE_STRING'
+FAMILY_THEN_GIVEN = 'FAMILY_THEN_GIVEN'
+GIVEN_THEN_FAMILY = 'GIVEN_THEN_FAMILY'
+
 
 class DatasetMD:
     """This class is the base class for encapsulating scientific / 
@@ -21,26 +28,40 @@ class DatasetMD:
     
     :param base: Base metadata for a dataset (e.g. title, abstract)
     :type base: Base, defaults to None
-    :param citation:
+    :param citation: Decribes any formal citation (such as a digital
+                object identifier from an authority like DataCite) which should
+                be used to refer to the dataset in documents including reports
+                or academic journal papers
     :type citation: Citation
-    :param cross_references:
+    :param cross_references: A list of references to other relevant metadata
+                entities, including other related instances of 
+                :py:class:`datasetmd.DatasetMD`
     :type cross_references: list of :py:class:`datasetmd.CrossReference`
-                                    objects, defaults to None
-    :param feature: 
+                objects, defaults to None
+    :param feature: A geographic feature describing the spatial extent of the
+                dataset
     :type feature: Feature, defaults to None
     :param included_in_data_catalogue:
     :type included_in_data_catalogue: WebAddress, defaults to None
-    :param keywords:
+    :param keywords: A list of lexical labels which are used to classify
+                the content of the dataset described by the 
+                :py:class:`datasetmd.DatasetMD` instance
     :type list of DefinedTerm objects, defaults to None:
-    :param limitations:
+    :param limitations: Describes any usage or legal limitations, outside of
+                license agreement, which apply to the  dataset described by the
+                :py:class:`datasetmd.DatasetMD`
     :type limitations: Limitations, defaults to None
     :param observed_properties:
     :type observed_properties: list of :py:class:`datasetmd.ObservedProperty`
-                                    objects, defaults to None
-    :param owning_organisations:
+                objects, defaults to None
+    :param owning_organisations: A list of the 
+                :py:class:`datasetmd.Organisation` s who have a claim on
+                ownsership of the :py:class:`datasetmd.Dataset` instance
     :type owning_organisations: list of :py:class:`datasetmd.Organisation` 
-                                    objects, defaults to None
-    :param publisher:
+                objects, defaults to None
+    :param publisher: Indicates the :py:class:`datasetmd.Organisation` 
+                responsible for publishing the dataset described by the 
+                :py:class:`datasetmd.DatasetMD` instance
     :type publisher: Organisation, defaults to None
     """
     def __init__(self,
@@ -124,11 +145,11 @@ class DatasetMD:
             keywords = None
         
         return jinja2.Template(datasetmd.templates.iso19139.template()).render(md=self, 
-                        citation_string=self.cite('string'), keywords=keywords)
+                        citation_string=self.cite(CITE_STRING), keywords=keywords)
     
     def toDataCiteXML(self):
-        """Outputs a :py:class:`datasetmd.DatasetMD` object as DataCite MetaData Store compliant 
-        XML
+        """Outputs a :py:class:`datasetmd.DatasetMD` object as DataCite 
+        MetaData Store compliant XML
         
         :return: A string of text formatted to DataCite XML schema
         :rtype: str
@@ -136,24 +157,31 @@ class DatasetMD:
         pass
         
     def toSchemaDotOrg(self):
+        """Outputs a :py:class:`datasetmd.DatasetMD` as a JSON string, 
+        following the Earth Science Informatics Partnership's Science on
+        Schema patterns.
+        
+        :return: A JSON-LD formatted string using the Schema.org vocabulary
+        :rtype: str
+        """
         authors = datasetmd.templates.schemadotorg_creatorlist.template(self)
         return jinja2.Template(datasetmd.templates.schemadotorg.template()).render(md=self,
-                    citation_string=self.cite('string'),authors=authors)
+                    citation_string=self.cite(CITE_STRING),authors=authors)
         
     def cite(self, citationtype):
         """Creates a citation string for the :py:class:`datasetmd.DatasetMD` 
         object, or formats a citation to a well-known reference manager 
-        ormat.
+        format.
         
         :param citationtype: The value of type should be one of 
-                                * `string`
+                                * :py:data:`datasetmd.CITE_STRING`
         :type citationtype: str
         
         :return: A string for the citation type requested
         :rtype: str, or None is `type` is not supported
         """
         return_value = None
-        if citationtype.lower() == 'string':
+        if citationtype.lower() == CITE_STRING:
             return_value = datasetmd.templates.citationstring.template(self)
         return return_value
 
@@ -199,19 +227,26 @@ class Base:
 
 class Feature:
     """This class describes a geographic feature (point, line or polygon)
-    associated with a dataset,
+    which describes the spatial extent of a dataset,
     
-    :param crs_epsg_code:
+    :param crs_epsg_code: A four digit integer used to identify the co-ordinate
+            reference system used in defining the 
+            :py:class:`datasetmd.Feature`. The code is taken from the EPSG 
+            Geodetic Parameter Dataset
     :type crs_epsg_code: int
-    :param id:
+    :param id: A unique or persistent identifier to the geographic feature
     :type id: str, defaults to None
-    :param latitude_northernmost:
+    :param latitude_northernmost: The northernmost extent of the spatial 
+            coverage described by the :py:class:`datasetmd.Feature`.
     :type latitude_northernmost: float
-    :param latiude_southernmost:
+    :param latiude_southernmost: The southernmost extent of the spatial 
+            coverage described by the :py:class:`datasetmd.Feature`.
     :type latiude_southernmost: float
-    :param longitude_easternmost:
+    :param longitude_easternmost: The easternmost extent of the spatial 
+            coverage described by the :py:class:`datasetmd.Feature`.
     :type longitude_easternmost: float
-    :param longitude_westernmost:
+    :param longitude_westernmost: The westernmost extent of the spatial 
+            coverage described by the :py:class:`datasetmd.Feature`.
     :type longitude_westernmost: float
     """
     def __init__(self, 
@@ -247,13 +282,28 @@ class Organisation:
     """This class describes an Organisation, typically a data provider, a 
     metadata publisher, or carrying another role in relation to a dataset.
     
-    :param administrative_area:
+    :param administrative_area: The geographic region in which the
+            :py:class:`datasetmd.Organisation` is situated
     :type administrative_area: str, defaults to None
-    :param city:
+    :param city: The city in which the :py:class:`datasetmd.Organisation` is 
+            situated
     :type city: str, defaults to None
-    :param name:
-    :type name: str, defaults to None:
-    :param website:
+    :param country: The country in which the :py:class:`datasetmd.Organisation`
+            is situated
+    :type country: str, defaults to None
+    :param delivery_point: The street address of the
+            :py:class:`datasetmd.Organisation` 
+    :type delivery_point: str, defaults to None
+    :param email_address: A central contact e-mail for the 
+            :py:class:`datasetmd.Organisation`
+    :type email_address: str, defaults to None
+    :param name: The name of the :py:class:`datasetmd.Organisation`
+    :type name: str, defaults to None
+    :param postal_code: A postal code (for example post code, zipcode or
+            EirCode) for the :py:class:`datasetmd.Organisation`
+    :type postal_code: str, defaults to None
+    :param website: A website associated with the 
+            :py:class:`datasetmd.Organisation`
     :type website: WebAddress, defaults to None
     """
     def __init__(self,
@@ -296,10 +346,11 @@ class Organisation:
 class WebAddress:
     """ This class describes an HTTP, FTP or other such web address
      
-    :param title:
+    :param title: A label or title for the :py:class:`datasetmd.WebAddress` that
+            can be used in human readable serialisations of the metadata
     :type title: str
-    :param url:
-    :param url: str
+    :param url: The machine actionable link of the WebAddress
+    :type url: str
     """
     def __init__(self, title=None, url=None):
         self.url = url
@@ -317,17 +368,22 @@ class Citation:
     
     :param authors: A list of authors for the dataset
     :type authors: list of :py:class:`datasetmd.Person` or 
-                        :py:class:`datasetmd.Organisation` objects, defaults 
-                        to None
-    :param doi:
+            :py:class:`datasetmd.Organisation` objects, defaults to None
+    :param doi: A digital object identifier associated with the parent
+            :py:class:`datasetmd.DatasetMD` instance. The doi given here
+            should not use any prefix like http:// or doi:
     :type doi: str, defaults to None
-    :param doi_publication_date:
+    :param doi_publication_date: The date on which the digital object 
+            identifier was issued
     :type doi_publication_date: datetime.datetime.date, defaults to None
-    :param doi_publisher:
+    :param doi_publisher: The :py:class:`datasetmd.Organisation` responsible
+            for minting the digital object identifier
     :type doi_publisher: Organisation, defaults to None
-    :param prefer_short_doi:
+    :param prefer_short_doi: A boolean indicating if the short doi is the
+            preferred identifier to use when outputting a citation string
     :type prefer_short_doi: bool, defaults to False
-    :param short_doi:
+    :param short_doi: A shortened form of the digital object identifier
+            as created by the `Short doi service <https://shortdoi.org/>`__
     :type short_doi: str, defaults to None
     """
     def __init__(self, authors=None,
@@ -363,16 +419,22 @@ class Person:
     Organisations and have one or more roles associated in some way with a 
     DatasetMD object
     
-    :param affiliation:
+    :param affiliation: A list of :py:class:`datasetmd.Organisation`s that
+            a :py:class:`datasetmd.Person` is affilitated with
     :type affiliation: list of :py:class:`datasetmd.Organisation` objects, 
-                        defaults to None
-    :param family_name:
+            defaults to None
+    :param family_name: The py:class:`datasetmd.Person`'s family name,
+            in Europe and the US, most often their last name
     :type family_name: str, defaults to None
-    :param given_name: 
+    :param given_name: The py:class:`datasetmd.Person`'s given name,
+            in Europe and the US, most often their first name
     :type given_name: str, defaults to None
-    :param name_order:
-    :type name_order: str, use the value of :py:data:`datasetmd.FAMILY_THEN_GIVEN` or :py:data:`datasetmd.GIVEN_THEN_FAMILY`,
-            defaults to GIVEN_THEN_FAMILY
+    :param name_order: The order in ehich the :py:class:`datasetmd.Person`'s
+            family and given names should be rendered
+    :type name_order: str, use the value of 
+            :py:data:`datasetmd.FAMILY_THEN_GIVEN` or 
+            :py:data:`datasetmd.GIVEN_THEN_FAMILY`, defaults to 
+            :py:data:`datasetmd.GIVEN_THEN_FAMILY`
     :param role:
     :type role:
     """
@@ -404,16 +466,24 @@ class DefinedTerm(WebAddress):
     """This class describes a term defined in a controlled vocabulary,
     taxonomy or as an individual in an ontology.
     
-    :param in_defined_term_set:
+    :param in_defined_term_set: The vocabulary or ontology from which
+            the :py:class:`datasetmd.DefinedTerm` is taken
     :type in_defined_term_set: DefinedTermSet, defaults to None
-    :param publication_date:
-    :type publication_date: `datetime.datetime.Date`
-    :param term_code:
+    :param publication_date: The date on which the
+            :py:class:`datasetmd.DefinedTerm` was published
+    :type publication_date: `datetime.datetime.Date`, defaults to None
+    :param term_code: A code taken from the 
+            :py:class:`datasetmd.DefinedTermSet` which is used in the
+            context of that ontology or vocabulary to identify the
+            :py:class:`datasetmd.DefinedTerm`. Foe example, 
+            `SDN:P01:ALATZZ01`
     :type term_code: str, defaults to None
-    :param title:
+    :param title: A lexical label, such as a `skos:prefLabel` which describes
+            the term
     :type title: str, defaults to None
-    :param url:
-    :param url: str, defaults to None
+    :param url: The URL which links to the original controlled vocabulary
+            or ontology term
+    :type url: str, defaults to None
     """
     def __init__(self, in_defined_term_set=None, 
                                         publication_date=None, 
@@ -436,6 +506,21 @@ class DefinedTerm(WebAddress):
                     self.url)
 
 class DefinedTermSet(WebAddress):
+    """This class gives details of a vocabulary or ontology which describes a
+    number of :py:class:`datasetmd.DefinedTerm` s
+    
+    :param publication_date: The date on which the
+            :py:class:`datasetmd.DefinedTermSet` was published
+    :type publication_date: `datetime.datetime.Date`, defaults to None
+    :param term_code: A short code which is commonly used to identify the
+            :py:class:`datasetmd.DefinedTermSet`, such as `SDN:P01::`
+    :type term_code: str, defaults to None
+    :param title: A lexical label, such as a `skos:prefLabel` which describes
+            the :py:class:`datasetmd.DefinedTermSet`
+    :type title: str, defaults to None
+    :param url: The URL of the controlled vocabulary or ontology
+    :type url: str, defaults to None
+    """
     def __init__(self, publication_date=None, 
                                         term_code=None,
                                         title=None, url=None):
@@ -447,7 +532,8 @@ class ObservedProperty(DefinedTerm):
     and recorded within the dataset described by a 
     :py:class`datasetmd.DatasetMD` instance
     
-    :param in_defined_term_set:
+    :param in_defined_term_set: The vocabulary or ontology from which
+            the :py:class:`datasetmd.ObservedProperty` is taken
     :type in_defined_term_set: DefinedTermSet, defaults to None
     :param publication_date:
     :type publication_date: `datetime.datetime.Date`
@@ -456,7 +542,7 @@ class ObservedProperty(DefinedTerm):
     :param title:
     :type title: str, defaults to None
     :param url:
-    :param url: str,defaults to None
+    :type url: str,defaults to None
     """
     def __init__(self, in_defined_term_set=None, 
                             publication_date=None,
@@ -487,7 +573,7 @@ class License:
     
     :param description:
     :type description: str, defaults to None
-    :param in_defined_term_set:
+    :param in_defined_term_set: 
     :type in_defined_term_set: DefinedTermSet, defaults to None
     :param name:
     :type name: str, defaults to None
@@ -526,7 +612,7 @@ class CrossReference(WebAddress):
         :param title:
         :type title: str, defaults to None
         :param url:
-        :param url: str, defaults to None
+        :type url: str, defaults to None
     """
     def __init__(self, cross_reference_type=None, 
                                         title=None, url=None):
